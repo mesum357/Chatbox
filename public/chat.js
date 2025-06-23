@@ -1,36 +1,38 @@
-// public/chat.js
 const socket = io();
 let currentRoom = null;
 const username = prompt('Enter your name:') || 'Anonymous';
-// In-memory history storage: map room name to array of messages
 const chatHistory = {};
 
+function addChannel() {
+  const input = document.getElementById('channelInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const list = document.getElementById('channel-list');
+  const li = document.createElement('li');
+  const btn = document.createElement('button');
+  btn.textContent = name;
+  btn.onclick = () => joinRoom(name);
+  li.appendChild(btn);
+  list.appendChild(li);
+  input.value = '';
+}
+
 function joinRoom(room) {
-  // Save current room messages to history
   if (currentRoom) {
+    socket.emit('leaveRoom', currentRoom);
+    // Save current messages
     const msgs = Array.from(document.querySelectorAll('#messages .message'))
       .map(div => ({ user: div.dataset.user, text: div.dataset.text }));
     chatHistory[currentRoom] = msgs;
   }
-
-  // Leave previous room
-  if (currentRoom) {
-    socket.emit('leaveRoom', currentRoom);
-  }
-
-  // Switch
   currentRoom = room;
   document.getElementById('currentRoom').textContent = room;
   const messagesDiv = document.getElementById('messages');
   messagesDiv.innerHTML = '';
-
-  // Load history for new room (if any)
+  // Load history
   if (chatHistory[room]) {
-    chatHistory[room].forEach(({ user, text }) => {
-      appendMessage(user, text);
-    });
+    chatHistory[room].forEach(({ user, text }) => appendMessage(user, text));
   }
-
   socket.emit('joinRoom', room);
 }
 
@@ -59,3 +61,16 @@ function sendMessage() {
 
 // Auto-join default room
 joinRoom('general');
+
+// Add event listeners for Enter key
+document.getElementById('msgInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    sendMessage();
+  }
+});
+
+document.getElementById('channelInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    addChannel();
+  }
+});
